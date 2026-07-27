@@ -1,0 +1,36 @@
+# Output & Generated Video Assets
+output/
+*.wav
+*.mp3
+local_speech*.wav
+
+# Private Channel Branding & Character Assets (DO NOT EXPOSE)
+female.png
+male.png
+character_ref.png
+channel_config.json
+*.png
+*.jpg
+*.jpeg
+
+# Python & Environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+env/
+
+# App Caches & Queue Files
+ideas_cache.json
+weekly_queue.json
+script.txt
+logs.md
+
+# OS / IDE Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

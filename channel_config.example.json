@@ -1,0 +1,7 @@
+{
+  "CHANNEL_NAME": "Observer Studio",
+  "CHARACTER_FEMALE_IMAGE": "female.png",
+  "CHARACTER_MALE_IMAGE": "male.png",
+  "STYLE_PROMPT_FEMALE": "Generate a horizontal 16:9 minimalist editorial storybook-style digital illustration of a female character. Soft painted shading, clean expressive line art, muted beige, cream, dusty blue, warm gray and charcoal palette, cozy lighting, lots of negative space, no text, no watermark.",
+  "STYLE_PROMPT_MALE": "Generate a horizontal 16:9 minimalist editorial storybook-style digital illustration of a male character. Soft painted shading, clean expressive line art, muted beige, cream, dusty blue, warm gray and charcoal palette, cozy lighting, lots of negative space, no text, no watermark."
+}
