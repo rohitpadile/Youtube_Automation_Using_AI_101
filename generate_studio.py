@@ -202,7 +202,7 @@ def suggest_collision_ideas(client, force_refresh=False):
         except Exception:
             pass
 
-    print("💡 Brainstorming 20 fresh Collision ideas live with Gemini API...")
+    print("[*] Brainstorming 20 fresh Collision ideas live with Gemini API...")
     past_topics = get_past_topics()
     
     prompt = "Generate 20 completely original, highly observant video collision ideas."
@@ -340,7 +340,7 @@ def generate_prompts_guide_file(output_dir, scenes, voice="F4"):
 
         formatted_prompt = f"Use the attached {ref_label} character reference as the exact recurring character. {visual_desc}\n\n{master_style.strip()}"
         
-        block = f"IMAGE {num_val}\n🎙 Script\n\n{s['narration'].strip()}\n\nPrompt\n\n{formatted_prompt}"
+        block = f"IMAGE {num_val}\n\U0001f399 Script\n\n{s['narration'].strip()}\n\nPrompt\n\n{formatted_prompt}"
         blocks.append(block)
 
     full_guide = ("\n" + "=" * 60 + "\n\n").join(blocks)
@@ -545,14 +545,14 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print(f"  {CHANNEL_CFG.get('CHANNEL_NAME', 'Observer Studio').upper()} — ASSET GENERATOR")
+    print(f"  {CHANNEL_CFG.get('CHANNEL_NAME', 'Observer Studio').upper()} -- ASSET GENERATOR")
     print("=" * 60)
 
     client = get_genai_client()
 
     if args.ideas:
         ideas = suggest_collision_ideas(client, force_refresh=True)
-        print(f"\n💡 Suggested {len(ideas)} Collision Ideas:")
+        print(f"\n[*] Suggested {len(ideas)} Collision Ideas:")
         for idx, item in enumerate(ideas, 1):
             print(f"  {idx}. [{item['concept_a']} x {item['concept_b']}] -> \"{item['title_hook']}\"")
         return
