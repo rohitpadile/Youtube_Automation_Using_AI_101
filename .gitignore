@@ -12,6 +12,7 @@ channel_config.json
 *.png
 *.jpg
 *.jpeg
+MR_NOBODY_FRAMEWORK.md
 
 # Python & Environment
 __pycache__/

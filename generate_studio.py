@@ -58,8 +58,8 @@ def load_channel_config():
         "CHANNEL_NAME": "Observer Studio",
         "CHARACTER_FEMALE_IMAGE": "female.png",
         "CHARACTER_MALE_IMAGE": "male.png",
-        "STYLE_PROMPT_FEMALE": "Generate a horizontal 16:9 minimalist editorial storybook-style digital illustration of a female character. Soft painted shading, clean line art, muted tones, cozy lighting, negative space, no text.",
-        "STYLE_PROMPT_MALE": "Generate a horizontal 16:9 minimalist editorial storybook-style digital illustration of a male character. Soft painted shading, clean line art, muted tones, cozy lighting, negative space, no text."
+        "STYLE_PROMPT_FEMALE": "Generate a horizontal 16:9 minimalist editorial storybook-style digital illustration. Maintain the exact same recurring female character, clothing, facial features, proportions, color palette and illustration style as the reference image. Soft painted shading, clean expressive line art, muted beige, cream, dusty blue, warm gray and charcoal palette, cozy lighting, lots of negative space, no text, no watermark.",
+        "STYLE_PROMPT_MALE": "Generate a horizontal 16:9 minimalist editorial storybook-style digital illustration. Maintain the exact same recurring male character, clothing, facial features, proportions, color palette and illustration style as the reference image. Soft painted shading, clean expressive line art, muted beige, cream, dusty blue, warm gray and charcoal palette, cozy lighting, lots of negative space, no text, no watermark."
     }
 
 CHANNEL_CFG = load_channel_config()
@@ -106,7 +106,10 @@ SPEECH WRITING & PACING RULES (STRICT FOR TTS SYNTHESIS):
 - LISTS: Each item in a list gets its own separate line.
 - SHORT SENTENCES: Keep sentences between 8 to 15 words.
 - TONE: Quiet, curious, observant, slightly dry, never preachy.
-- HARD RULES: NO academic terminology, NO study citations, NO "Imagine...", NO "What if...", NO exclamation marks.
+- HARD RULES & FORBIDDEN PHRASING:
+  * NO academic/explanatory terminology (e.g. "We feel compelled to...", "We have grown uncomfortable...", "This cognitive bias causes...").
+  * NO study citations, NO "Imagine...", NO "What if...", NO exclamation marks.
+  * Write visual, poetic observations instead of abstract explanations (e.g. write "Phones. Coffee cups. Headphones. Plastic and glass slowly became little fences we could carry in our pockets.").
 
 THE AUDIENCE TEST:
 Would a thoughtful person pause, look out a rainy window, and genuinely think this?
@@ -279,6 +282,61 @@ def generate_script_from_collision(client, concept_a, concept_b, existing_script
     print(f"    [+] Script generated and saved to {SCRIPT_FILE}")
     return script_text
 
+def sanitize_visual_prompt(prompt_text, ref_label="female"):
+    # 1. Clean video motion terms (Negative prompt sanitization)
+    motion_replacements = [
+        (r'\bFast montage transition\.?\s*', ''),
+        (r'\bmontage transition\.?\s*', ''),
+        (r'\bmontage\.?\s*', ''),
+        (r'\bSlow camera pull-away\.?\s*', 'Wide static shot. '),
+        (r'\bcamera pull-away\.?\s*', 'static shot. '),
+        (r'\btracking shot\b', 'static shot'),
+        (r'\bslow push-in\b', 'static close-up'),
+        (r'\bfocus pulls?\b', 'soft focus depth'),
+        (r'\bcamera tilts up\b', 'low-angle view'),
+        (r'\bcamera slowly tilts up\b', 'low-angle composition'),
+        (r'\bslow pan\b', 'wide static view'),
+        (r'\bextreme slow motion\b', 'frozen mid-action'),
+        (r'\bslow motion\b', 'frozen mid-action'),
+        (r'\bslowly from the photo\'?s hollow eyes\b', 'with soft depth of field'),
+    ]
+    for pattern, repl in motion_replacements:
+        prompt_text = re.sub(pattern, repl, prompt_text, flags=re.IGNORECASE)
+
+    # 2. Clean sci-fi / CGI forcefield overlays
+    scifi_replacements = [
+        (r'faint glowing geometric lines overlay.*?(?:forcefield|barrier)?\.?', 'The subjects remain quiet and separated by physical distance.'),
+        (r'glowing forcefield', 'physical separation'),
+        (r'glowing geometric lines', 'subtle shadows'),
+    ]
+    for pattern, repl in scifi_replacements:
+        prompt_text = re.sub(pattern, repl, prompt_text, flags=re.IGNORECASE)
+
+    return prompt_text.strip()
+
+def build_full_prompt(visual_desc, ref_label="female", master_style=""):
+    visual_desc = sanitize_visual_prompt(visual_desc, ref_label)
+
+    ref_anchor = f"Use the attached {ref_label} character reference as the exact recurring character.\n\nCinematic editorial storybook illustration."
+    
+    if visual_desc.startswith("Use the attached"):
+        if "Cinematic editorial storybook illustration" not in visual_desc:
+            visual_desc = visual_desc.replace(f"Use the attached {ref_label} character reference as the exact recurring character.", ref_anchor)
+    else:
+        has_observer = any(k in visual_desc.lower() for k in [f"recurring {ref_label}", "observer", "she ", "her ", "he ", "his "])
+        if has_observer or "character" in visual_desc.lower():
+            visual_desc = f"{ref_anchor} {visual_desc}"
+        else:
+            visual_desc = f"Use the attached {ref_label} character reference as the exact recurring character.\n\nCinematic editorial storybook illustration. {visual_desc}"
+
+    handoff_1 = "The image should feel like a frame from a quiet cinematic short film, subtly hinting at the deeper psychological theme without revealing it outright."
+    handoff_2 = "The composition should be clean, emotionally restrained, and visually memorable, with generous negative space that allows the subject and symbolism to breathe."
+    restraint_line = "Avoid horror aesthetics, exaggerated expressions, surreal distortions, text, logos, or unnecessary background clutter. Prioritize subtle realism and emotional restraint."
+    cinematic_handoff = f"{handoff_1}\n\n{handoff_2}\n\n{restraint_line}"
+
+    clean_style = master_style.strip()
+    return f"{visual_desc}\n\n{cinematic_handoff}\n\n{clean_style}"
+
 def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=None):
     if existing_meta_file and os.path.exists(existing_meta_file):
         try:
@@ -295,17 +353,57 @@ def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=N
 
     print("\n--- Step 1/3: Parsing script into micro-scenes with Gemini API ---")
     ref_file, master_style = get_character_reference(voice)
-    ref_label = "female" if "female" in ref_file.lower() else "male"
+    is_female = "female" in ref_file.lower()
+    ref_label = "female" if is_female else "male"
+    pronoun_subj = "she" if is_female else "he"
+    pronoun_pos = "her" if is_female else "his"
     
     system_instruction = f"""
     You are an expert storyboard director for {CHANNEL_CFG.get('CHANNEL_NAME', 'Observer Studio')}.
     Analyze the provided script and break it down into dense, sentence-by-sentence micro-scenes (typically 10 to 18 scenes per script).
     CRITICAL: CHANGE THE SCENE VISUAL PROMPT FOR EVERY NEW SENTENCE, BREATH LINE, OR DISTINCT IDEA.
     
+    BRANDING & CINEMATOGRAPHY RULES FOR "MR. NOBODY" (MANDATORY):
+    1. RECURRING OBSERVER PERSPECTIVE (NO CHARACTER CONTRADICTIONS):
+       - The recurring {ref_label} character is "The Observer".
+       - When observing secondary people (e.g., a man on a train, a woman at a cafe, a teenager in a subway), frame the shot with/through The Observer's presence (e.g. "Over-the-shoulder shot from behind the recurring {ref_label} observer watching a middle-aged man...", "Medium shot of the recurring {ref_label} observer sitting across from a man who...").
+       - NEVER create contradictions like "Use attached female character reference... Medium shot of a man" without including the female observer in the framing!
+       - If a scene is purely an environment or object without any person present, describe only the object/environment framing without forcing character references.
+
+    2. FORBIDDEN VIDEO MOTION & CAMERA WORDS (STATIC IMAGE RULE):
+       Gemini generates a STILL IMAGE. Do NOT use video movement or film jargon.
+       STRICT FORBIDDEN LIST (NEVER USE IN PROMPTS):
+       - NO "montage" or "fast montage transition"
+       - NO "camera pull-away" or "slow camera pull-away"
+       - NO "tracking shot" or "low-angle tracking shot"
+       - NO "slow push-in" or "focus pulls"
+       - NO "camera tilts up" or "slow pan" or "zoom"
+       Describe ONLY the static framing of the final single image.
+
+    3. FORBIDDEN SCI-FI & OVER-LITERAL METAPHORS (GROUNDED REALISM RULE):
+       Translate psychological metaphors into quiet, real-world visual observations.
+       STRICT FORBIDDEN LIST (NEVER USE IN PROMPTS):
+       - NO "glowing lines" or "glowing forcefield"
+       - NO "geometric overlays" or "holograms"
+       - NO "CGI effects" or sci-fi visual tropes
+       Example: If script mentions "invisible fences", render people separated by physical distance or ordinary objects (coffee cup, dark phone screen), NOT literal glowing CGI forcefields!
+
+    4. EMOTIONAL ATMOSPHERE & COMPOSITION:
+       Every prompt must include one emotional sentence describing the psychological mood or quiet curiosity. Frame with generous negative space.
+
+    LOCKED PROMPT FRAMEWORK:
+    Construct each "visual_prompt" following this structure:
+    1. Reference Anchor (if character present): "Use the attached {ref_label} character reference as the exact recurring character."
+    2. Camera Angle & Framing: (e.g. Close-up over-the-shoulder shot from {pronoun_pos} perspective, Wide atmospheric shot...)
+    3. Scene Description: (environment, location, key subjects)
+    4. Observer Action & Focus: (what the recurring {ref_label} observer is watching, doing, or noticing)
+    5. Emotional Atmosphere & Feeling: (one emotional sentence describing the psychological mood)
+    6. Lighting & Static Composition: (e.g. Soft morning light filtering through windows, static framing, clean composition)
+
     Output ONLY a valid JSON array of objects. Each object MUST contain:
     - "scene_num": Integer (starting at 1)
     - "narration": Exact short narration text for this specific micro-scene (1 to 2 lines max).
-    - "visual_prompt": A highly specific scene description focusing on camera angle, subject action, environment, and emotion.
+    - "visual_prompt": A visual prompt adhering strictly to the framework above (Parts 1 to 6).
     
     Do NOT include code block markdown or explanations outside the JSON array.
     """
@@ -321,7 +419,7 @@ def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=N
     
     for s in scenes:
         visual_desc = s['visual_prompt'].strip()
-        s["full_prompt"] = f"Use the attached {ref_label} character reference as the exact recurring character. {visual_desc}\n\n{master_style.strip()}"
+        s["full_prompt"] = build_full_prompt(visual_desc, ref_label=ref_label, master_style=master_style)
         
     print(f"    [+] Created {len(scenes)} visual micro-scenes.")
     return scenes
@@ -335,12 +433,9 @@ def generate_prompts_guide_file(output_dir, scenes, voice="F4"):
     for s in scenes:
         num_val = s['scene_num']
         visual_desc = s.get('visual_prompt', '').strip()
-        if not visual_desc and "Use the attached" in s.get('full_prompt', ''):
-            visual_desc = s['full_prompt'].split("\n\n")[0].replace(f"Use the attached {ref_label} character reference as the exact recurring character.", "").strip()
-
-        formatted_prompt = f"Use the attached {ref_label} character reference as the exact recurring character. {visual_desc}\n\n{master_style.strip()}"
+        formatted_prompt = build_full_prompt(visual_desc, ref_label=ref_label, master_style=master_style)
         
-        block = f"IMAGE {num_val}\n\U0001f399 Script\n\n{s['narration'].strip()}\n\nPrompt\n\n{formatted_prompt}"
+        block = f"IMAGE {num_val}\n🎙️ Script\n\n{s['narration'].strip()}\n\nPrompt\n\n{formatted_prompt}"
         blocks.append(block)
 
     full_guide = ("\n" + "=" * 60 + "\n\n").join(blocks)

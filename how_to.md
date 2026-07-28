@@ -78,13 +78,27 @@ white sneakers, calm expression, premium editorial illustration, no text, no wat
 def generate_scene_prompts(script_text):
     print("1. Parsing script into scenes using Gemini API...")
     system_instruction = f"""
-    You are an expert storyboard director for an illustrated psychology channel. 
+    You are an expert storyboard director for an illustrated psychology channel ("Mr. Nobody"). 
     Analyze the provided script and break it down into 8 to 15 distinct scenes.
+    
+    BRANDING RULES:
+    1. The recurring female observer is ALWAYS the visual anchor/protagonist observing the world.
+    2. Include cinematic intent (what the camera framing makes the viewer feel).
+    3. Include one emotional sentence describing the psychological atmosphere.
+    
+    LOCKED 7-STEP PROMPT FRAMEWORK:
+    1. Anchor: "Use the attached female character reference as the exact recurring character."
+    2. Camera angle
+    3. Scene description
+    4. What the recurring observer is noticing / watching
+    5. Emotional feeling / cinematic intent
+    6. Lighting & atmosphere
+    7. Master style block
+    
     For each scene, output a JSON array of objects. Each object must have:
     - "scene_num": Integer
     - "narration": The exact script text for this scene
-    - "visual_prompt": A detailed image prompt describing the subject's pose, environment, and emotion.
-    Append this style definition to EVERY visual_prompt: '{MASTER_STYLE_PROMPT}'
+    - "visual_prompt": A prompt adhering strictly to the 7-step Observer framework.
     Return ONLY valid JSON.
     """
     
