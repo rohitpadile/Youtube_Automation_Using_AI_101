@@ -131,11 +131,33 @@ def run_web_image_automation(max_videos=MAX_VIDEOS_PER_RUN):
         page = context.pages[0] if context.pages else context.new_page()
         page.bring_to_front()
 
-        # Warm-up: navigate to Gemini once before starting any video loop
-        print(f"[*] Warm-up: Navigating to {WEB_UI_URL}...")
-        page.goto(WEB_UI_URL, wait_until="domcontentloaded", timeout=60000)
+        def navigate_safe(pg, url, retries=2):
+            """Navigate without hanging. If already on Gemini, skip navigation."""
+            try:
+                current_url = pg.url or ""
+            except Exception:
+                current_url = ""
+            if "gemini.google.com" in current_url:
+                print(f"  [✓] Already on Gemini — skipping navigation.")
+                return True
+            for attempt in range(1, retries + 1):
+                try:
+                    print(f"  [*] Navigating to Gemini (attempt {attempt})...")
+                    pg.evaluate(f"window.location.href = '{url}'")
+                    pg.wait_for_timeout(5000)  # Give JS time to route
+                    print(f"  [✓] Navigation issued. Current URL: {pg.url}")
+                    return True
+                except Exception as nav_err:
+                    print(f"  [!] Navigation attempt {attempt} error: {nav_err}")
+                    pg.wait_for_timeout(2000)
+            print(f"  [!] Could not navigate automatically — please ensure Gemini is open in the browser.")
+            return False
+
+        # Initial warm-up navigation
+        print(f"[*] Opening Gemini Web UI...")
+        navigate_safe(page, WEB_UI_URL)
         page.wait_for_timeout(3000)
-        print("[✓] Gemini Web UI loaded. Starting video generation loop...")
+        print("[✓] Ready. Starting video generation loop...")
 
         # -------------------------------------------------------------
         # PROCESS EACH VIDEO PACKAGE (UP TO 2 VIDEOS PER RUN)
@@ -157,13 +179,13 @@ def run_web_image_automation(max_videos=MAX_VIDEOS_PER_RUN):
             print(f"📊 Processing {len(missing_scenes)} missing scenes (Total scenes: {proj['total_scenes']})")
             print(f"─" * 60)
 
-            # STEP A: START A FRESH CHAT SESSION FOR THIS VIDEO
-            print(f"  [🌐] Navigating to fresh Gemini chat for {folder_name}...")
+            # STEP A: ENSURE FRESH GEMINI CHAT FOR THIS VIDEO
+            print(f"  [🌐] Ensuring fresh Gemini chat for {folder_name}...")
             try:
-                page.goto(WEB_UI_URL, wait_until="domcontentloaded", timeout=45000)
+                navigate_safe(page, WEB_UI_URL)
                 page.wait_for_timeout(2000)
 
-                # Click 'New chat' button if page was already on an existing thread
+                # Click 'New chat' button if visible
                 new_chat_btn = page.locator("a[aria-label='New chat'], button[aria-label='New chat'], .new-chat-button").first
                 if new_chat_btn.is_visible(timeout=3000):
                     new_chat_btn.click()
