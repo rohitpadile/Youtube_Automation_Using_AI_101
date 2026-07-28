@@ -116,10 +116,9 @@ def run_web_image_automation(max_videos=MAX_VIDEOS_PER_RUN):
                 channel="chrome",
                 headless=False,
                 args=[
-                    f"--profile-directory={PROFILE_DIRECTORY}",
-                    "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-blink-features=AutomationControlled"
+                    f"--profile-directory={PROFILE_DIRECTORY}"
+                    # NOTE: Do NOT add --no-sandbox or --disable-setuid-sandbox on Windows
+                    # Those are Linux-only flags and cause Chrome to freeze on Windows
                 ]
             )
         except Exception as e:
@@ -127,9 +126,16 @@ def run_web_image_automation(max_videos=MAX_VIDEOS_PER_RUN):
             print(f"   Error details: {e}")
             return {"status": "error", "message": "Please close Google Chrome browser before running automation."}
 
+        # Wait for Chrome to fully start up, then get or open a page
+        time.sleep(3)
         page = context.pages[0] if context.pages else context.new_page()
         page.bring_to_front()
-        time.sleep(1)
+
+        # Warm-up: navigate to Gemini once before starting any video loop
+        print(f"[*] Warm-up: Navigating to {WEB_UI_URL}...")
+        page.goto(WEB_UI_URL, wait_until="domcontentloaded", timeout=60000)
+        page.wait_for_timeout(3000)
+        print("[✓] Gemini Web UI loaded. Starting video generation loop...")
 
         # -------------------------------------------------------------
         # PROCESS EACH VIDEO PACKAGE (UP TO 2 VIDEOS PER RUN)
