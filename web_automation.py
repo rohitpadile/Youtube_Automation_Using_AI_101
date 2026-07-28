@@ -60,6 +60,7 @@ def find_missing_scenes(output_dir="output"):
                 pass
 
         # Check for missing scene_XX.png files
+        missing_in_folder = 0
         for s in scenes:
             num_val = s.get("scene_num", 1)
             num_str = str(num_val).zfill(2)
@@ -77,6 +78,10 @@ def find_missing_scenes(output_dir="output"):
                     "prompt": prompt_to_send,
                     "ref_image": ref_image
                 })
+                missing_in_folder += 1
+
+        if scenes and missing_in_folder > 0:
+            print(f"  [📁] {os.path.basename(folder)}: {len(scenes) - missing_in_folder}/{len(scenes)} scenes completed ({missing_in_folder} missing).")
 
     return missing_items
 
@@ -115,10 +120,9 @@ def run_web_image_automation(max_limit=MAX_IMAGES_PER_RUN):
             print(f"   Error details: {e}")
             return {"status": "error", "message": "Close Chrome browser before running automation."}
 
-        page = context.new_page()
+        page = context.pages[0] if context.pages else context.new_page()
         print(f"[*] Navigating to {WEB_UI_URL}...")
-        page.goto(WEB_UI_URL)
-        page.wait_for_load_state("networkidle")
+        page.goto(WEB_UI_URL, wait_until="domcontentloaded")
 
         print("🌐 Connected to Web UI. Starting image generation loop...\n")
 
