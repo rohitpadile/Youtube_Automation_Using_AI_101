@@ -147,7 +147,7 @@ def trigger_batch():
 @app.route("/api/web-generate-images", methods=["POST"])
 def trigger_web_images():
     data = request.json or {}
-    max_limit = int(data.get("max_limit", 30))
+    max_videos = int(data.get("max_videos", 2))
 
     try:
         from web_automation import run_web_image_automation, find_incomplete_projects
@@ -156,13 +156,12 @@ def trigger_web_images():
             return jsonify({"status": "info", "message": "All projects in /output already have 100% complete scene images!"})
 
         def start_web_automation_thread():
-            run_web_image_automation(max_limit=max_limit)
+            run_web_image_automation(max_videos=max_videos)
 
         threading.Thread(target=start_web_automation_thread).start()
-        videos_to_run = int(data.get("max_videos", 2))
         return jsonify({
             "status": "success",
-            "message": f"Playwright Chrome automation started! Processing {min(len(missing), videos_to_run)} complete video packages.",
+            "message": f"Playwright Chrome automation started! Processing {min(len(missing), max_videos)} complete video packages.",
             "incomplete_videos_count": len(missing)
         })
     except Exception as e:
