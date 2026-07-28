@@ -540,9 +540,34 @@ def find_existing_project_folder(concept_a, concept_b):
     if not concept_a or not concept_b:
         return None
     slug = f"_{make_slug(concept_a)}_x_{make_slug(concept_b)}"
+    
+    # 1. Check local output directory
     matches = sorted(glob.glob(os.path.join(OUTPUT_BASE_DIR, f"video_*{slug}")), reverse=True)
     if matches:
         return matches[0]
+
+    # 2. Check external YouTube channel directory
+    if os.path.exists(EXTERNAL_YOUTUBE_DIR):
+        ext_matches = sorted(glob.glob(os.path.join(EXTERNAL_YOUTUBE_DIR, f"*{slug}")), reverse=True)
+        if ext_matches:
+            return ext_matches[0]
+            
+        # Fallback check by reading metadata.json concept_a & concept_b in external subfolders
+        ca_clean = concept_a.strip().lower()
+        cb_clean = concept_b.strip().lower()
+        for folder in glob.glob(os.path.join(EXTERNAL_YOUTUBE_DIR, "*")):
+            meta_p = os.path.join(folder, "metadata.json")
+            if os.path.exists(meta_p):
+                try:
+                    with open(meta_p, "r", encoding="utf-8") as f:
+                        d = json.load(f)
+                        d_ca = d.get("concept_a", "").strip().lower()
+                        d_cb = d.get("concept_b", "").strip().lower()
+                        if d_ca == ca_clean and d_cb == cb_clean:
+                            return folder
+                except Exception:
+                    pass
+
     return None
 
 def is_project_complete(folder_path):
