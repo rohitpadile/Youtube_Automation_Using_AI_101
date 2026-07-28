@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎬 Mr. Nobody — AI YouTube Automation Studio
+# 🎬 AI YouTube Automation Studio
 
 ### *An automated end-to-end storytelling, micro-storyboarding & voiceover synthesis engine for high-retention observational YouTube Shorts.*
 
@@ -19,7 +19,7 @@
 ## 📌 Executive Overview
 
 > [!NOTE]  
-> **Mr. Nobody Studio** automates the production of minimalist, reflective YouTube content. It collides ordinary mundane habits with deep psychological tendencies, generating **high-hook narrative scripts**, **dense static image storyboards**, and **natural voiceovers** — ready for immediate upload.
+> **AI Story Studio** automates the production of minimalist, reflective YouTube content. It collides ordinary mundane habits with deep psychological tendencies, generating **high-hook narrative scripts**, **dense static image storyboards**, and **natural voiceovers** — ready for immediate upload.
 
 ---
 
