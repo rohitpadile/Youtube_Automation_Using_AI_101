@@ -150,8 +150,8 @@ def trigger_web_images():
     max_limit = int(data.get("max_limit", 30))
 
     try:
-        from web_automation import run_web_image_automation, find_missing_scenes
-        missing = find_missing_scenes()
+        from web_automation import run_web_image_automation, find_incomplete_projects
+        missing = find_incomplete_projects()
         if not missing:
             return jsonify({"status": "info", "message": "All projects in /output already have 100% complete scene images!"})
 
@@ -159,10 +159,11 @@ def trigger_web_images():
             run_web_image_automation(max_limit=max_limit)
 
         threading.Thread(target=start_web_automation_thread).start()
+        videos_to_run = int(data.get("max_videos", 2))
         return jsonify({
             "status": "success",
-            "message": f"Playwright Chrome automation started! Generating up to {max_limit} missing images across {len(missing)} queued scenes.",
-            "missing_scenes_count": len(missing)
+            "message": f"Playwright Chrome automation started! Processing {min(len(missing), videos_to_run)} complete video packages.",
+            "incomplete_videos_count": len(missing)
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
