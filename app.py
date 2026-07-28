@@ -144,6 +144,29 @@ def trigger_batch():
     threading.Thread(target=start_batch_thread).start()
     return jsonify({"status": "success", "message": f"Overnight batch process started for {len(selected_ideas)} approved videos."})
 
+@app.route("/api/web-generate-images", methods=["POST"])
+def trigger_web_images():
+    data = request.json or {}
+    max_limit = int(data.get("max_limit", 30))
+
+    try:
+        from web_automation import run_web_image_automation, find_missing_scenes
+        missing = find_missing_scenes()
+        if not missing:
+            return jsonify({"status": "info", "message": "All projects in /output already have 100% complete scene images!"})
+
+        def start_web_automation_thread():
+            run_web_image_automation(max_limit=max_limit)
+
+        threading.Thread(target=start_web_automation_thread).start()
+        return jsonify({
+            "status": "success",
+            "message": f"Playwright Chrome automation started! Generating up to {max_limit} missing images across {len(missing)} queued scenes.",
+            "missing_scenes_count": len(missing)
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route("/api/shutdown", methods=["POST"])
 def shutdown():
     def delayed_exit():

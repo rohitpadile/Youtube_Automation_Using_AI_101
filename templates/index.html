@@ -613,6 +613,9 @@
                 <div class="status-dot"></div>
                 Pipeline Online
             </div>
+            <button onclick="triggerWebImageGeneration()" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--accent-purple); color: #fff; padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                🎨 Generate Images (AI Pro Chrome)
+            </button>
             <button class="btn-close-app" onclick="confirmShutdown()">
                 🛑 Close App
             </button>
@@ -1114,17 +1117,21 @@
             }
         }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            if (tab === 'current') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                document.getElementById('activeProjectView').style.display = 'block';
-                document.getElementById('historyView').style.display = 'none';
-            } else {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
-                document.getElementById('activeProjectView').style.display = 'none';
-                document.getElementById('historyView').style.display = 'block';
+        async function triggerWebImageGeneration() {
+            if (!confirm("Launch Playwright Chrome Automation to generate up to 30 missing scene images using your Google AI Pro subscription? (Make sure standard Google Chrome is closed so Playwright can access your AI Pro session!)")) {
+                return;
+            }
+            try {
+                const res = await fetch('/api/web-generate-images', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ max_limit: 30 })
+                });
+                const data = await res.json();
+                alert(data.message);
                 loadHistory();
+            } catch (e) {
+                alert("Error launching Playwright web automation: " + e);
             }
         }
     </script>
