@@ -5,7 +5,7 @@ import time
 import threading
 import webbrowser
 from flask import Flask, render_template, request, jsonify, send_from_directory
-from generate_studio import run_pipeline, get_genai_client, suggest_collision_ideas, SCRIPT_FILE, PUBLISHED_FILE
+from generate_studio import run_pipeline, get_genai_client, suggest_collision_ideas, SCRIPT_FILE, PUBLISHED_FILE, EXTERNAL_YOUTUBE_DIR
 from batch_studio import run_overnight_batch
 
 app = Flask(__name__, template_folder="templates")
@@ -15,6 +15,15 @@ QUEUE_FILE = "weekly_queue.json"
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/api/past_topics", methods=["GET"])
+def get_past_topics_endpoint():
+    try:
+        from generate_studio import get_past_topics
+        topics = get_past_topics()
+        return jsonify({"status": "success", "count": len(topics), "topics": topics})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route("/api/ideas", methods=["GET"])
 def get_ideas():
@@ -71,17 +80,24 @@ def list_projects():
         except Exception as e:
             print(f"Error reading {PUBLISHED_FILE}: {e}")
 
-    # 2. Match both video_* and project_* folders
+    # 2. Match both local video_* and external YouTube channel project folders
     project_folders = sorted(
         glob.glob(os.path.join(OUTPUT_DIR, "video_*")) + glob.glob(os.path.join(OUTPUT_DIR, "project_*")), 
         reverse=True
     )
+    if os.path.exists(EXTERNAL_YOUTUBE_DIR):
+        ext_folders = sorted(glob.glob(os.path.join(EXTERNAL_YOUTUBE_DIR, "*")), reverse=True)
+        project_folders.extend(ext_folders)
     
+    seen_folders = set()
     for folder in project_folders:
         meta_path = os.path.join(folder, "metadata.json")
         folder_name = os.path.basename(folder)
+        if folder_name in seen_folders:
+            continue
         
         if os.path.exists(meta_path):
+            seen_folders.add(folder_name)
             with open(meta_path, "r", encoding="utf-8") as f:
                 try:
                     data = json.load(f)
@@ -104,6 +120,7 @@ def generate():
     custom_script = data.get("custom_script")
     voice = data.get("voice", "F4")
     speed = float(data.get("speed", 0.90))
+    target_duration = float(data.get("target_duration", 1.5))
 
     try:
         project_data = run_pipeline(
@@ -111,7 +128,8 @@ def generate():
             concept_b=concept_b,
             custom_script=custom_script,
             voice=voice,
-            speed=speed
+            speed=speed,
+            target_duration=target_duration
         )
         if project_data:
             return jsonify({"status": "success", "project": project_data})

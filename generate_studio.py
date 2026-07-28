@@ -40,6 +40,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 SUPERTONIC_URL = os.environ.get("SUPERTONIC_URL", "http://127.0.0.1:7788/v1/audio/speech")
 SCRIPT_FILE = "script.txt"
 OUTPUT_BASE_DIR = "output"
+EXTERNAL_YOUTUBE_DIR = r"D:\Anonymous Branding - Youtube Channel"
 PUBLISHED_FILE = "published_videos.json"
 IDEAS_CACHE_FILE = "ideas_cache.json"
 CONFIG_FILE = "channel_config.json"
@@ -152,7 +153,12 @@ def get_past_topics():
         except Exception:
             pass
 
+    # 1. Scan local output directory
     meta_files = glob.glob(os.path.join(OUTPUT_BASE_DIR, "*", "metadata.json"))
+    # 2. Scan external YouTube channel directory
+    if os.path.exists(EXTERNAL_YOUTUBE_DIR):
+        meta_files.extend(glob.glob(os.path.join(EXTERNAL_YOUTUBE_DIR, "*", "metadata.json")))
+
     for mf in meta_files:
         try:
             with open(mf, "r", encoding="utf-8") as f:
@@ -207,9 +213,12 @@ def suggest_collision_ideas(client, force_refresh=False):
 
     print("[*] Brainstorming 20 fresh Collision ideas live with Gemini API...")
     past_topics = get_past_topics()
+    print(f"    [SEARCH] Duplicate Protection Active: Scanned {len(past_topics)} past topics across published_videos.json, local /output, and D:\\Anonymous Branding - Youtube Channel")
     
     prompt = "Generate 20 completely original, highly observant video collision ideas."
     if past_topics:
+        sample_str = ", ".join(past_topics[:3])
+        print(f"    [EXCLUDED] Excluding topics from Gemini prompt: {sample_str}... (+{len(past_topics)-3} more)")
         prompt += f"\nSTRICT EXCLUSION: Do NOT generate ideas covering any of these previously published or rendered topic pairs: {', '.join(past_topics)}"
 
     response = generate_content_with_retry(
@@ -261,7 +270,7 @@ def ensure_supertonic_server():
 
     return False
 
-def generate_script_from_collision(client, concept_a, concept_b, existing_script_file=None):
+def generate_script_from_collision(client, concept_a, concept_b, existing_script_file=None, target_duration=1.5):
     if existing_script_file and os.path.exists(existing_script_file):
         with open(existing_script_file, "r", encoding="utf-8") as f:
             script_text = f.read().strip()
@@ -269,12 +278,25 @@ def generate_script_from_collision(client, concept_a, concept_b, existing_script
                 print(f"    [+] Resuming: Script verified in {existing_script_file} (Skipping API generation).")
                 return script_text
 
-    print(f"\n--- Step 0: Generating script via Collision System ({concept_a} x {concept_b}) ---")
+    duration_val = float(target_duration) if target_duration else 1.5
+    min_words = int(duration_val * 130)
+    max_words = int(duration_val * 150)
+
+    duration_instruction = f"""
+    TARGET DURATION & WORD COUNT TARGET:
+    - Target Video Duration: Approximately {duration_val} minute(s).
+    - TOTAL WORD COUNT RANGE: Exactly between {min_words} and {max_words} words total.
+    - Keep overall length tailored for a {duration_val}-minute narration at a slow, reflective TTS reading speed.
+    """
+    
+    full_system_instruction = SYSTEM_SCRIPT_INSTRUCTION + "\n" + duration_instruction
+
+    print(f"\n--- Step 0: Generating script via Collision System ({concept_a} x {concept_b} | Target: {duration_val} mins / ~{min_words}-{max_words} words) ---")
     prompt = f"Concept A: {concept_a}\nConcept B: {concept_b}"
     response = generate_content_with_retry(
         client,
         contents=prompt,
-        system_instruction=SYSTEM_SCRIPT_INSTRUCTION
+        system_instruction=full_system_instruction
     )
     script_text = response.text.strip()
     with open(SCRIPT_FILE, "w", encoding="utf-8") as f:
@@ -360,7 +382,7 @@ def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=N
     
     system_instruction = f"""
     You are an expert storyboard director for {CHANNEL_CFG.get('CHANNEL_NAME', 'Observer Studio')}.
-    Analyze the provided script and break it down into dense, sentence-by-sentence micro-scenes (typically 10 to 18 scenes per script).
+    Analyze the provided script and break it down into dense, sentence-by-sentence micro-scenes (typically 10 to 35 scenes depending on script length).
     CRITICAL: CHANGE THE SCENE VISUAL PROMPT FOR EVERY NEW SENTENCE, BREATH LINE, OR DISTINCT IDEA.
     
     BRANDING & CINEMATOGRAPHY RULES FOR "MR. NOBODY" (MANDATORY):
@@ -555,7 +577,7 @@ def is_project_complete(folder_path):
 
     return True
 
-def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4", speed=0.90, enable_images=False):
+def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4", speed=0.90, enable_images=False, target_duration=1.5):
     client = get_genai_client()
 
     existing_folder = find_existing_project_folder(concept_a, concept_b)
@@ -581,7 +603,7 @@ def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4",
 
     # 1. Script Generation
     if concept_a and concept_b:
-        script_text = generate_script_from_collision(client, concept_a, concept_b, existing_script_file=script_path)
+        script_text = generate_script_from_collision(client, concept_a, concept_b, existing_script_file=script_path, target_duration=target_duration)
     elif custom_script:
         script_text = custom_script.strip()
     else:
@@ -606,6 +628,7 @@ def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4",
         "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
         "concept_a": concept_a or "",
         "concept_b": concept_b or "",
+        "target_duration": float(target_duration) if target_duration else 1.5,
         "script": script_text,
         "scenes": scenes,
         "voice": voice,
@@ -635,6 +658,7 @@ def main():
     parser.add_argument("--concept-b", "-b", type=str, help="Concept B")
     parser.add_argument("--voice", "-v", type=str, default="F4", help="Voice model")
     parser.add_argument("--speed", "-s", type=float, default=0.90, help="Voice speed")
+    parser.add_argument("--duration", "-d", type=float, default=1.5, help="Target script duration in minutes (e.g. 1.0, 1.5, 2.0)")
     parser.add_argument("--ideas", action="store_true", help="Suggest 20 fresh ideas")
     parser.add_argument("--enable-images", action="store_true", help="Enable API image generation (Default: OFF)")
     args = parser.parse_args()
@@ -657,7 +681,8 @@ def main():
         concept_b=args.concept_b, 
         voice=args.voice, 
         speed=args.speed,
-        enable_images=args.enable_images
+        enable_images=args.enable_images,
+        target_duration=args.duration
     )
 
 if __name__ == "__main__":

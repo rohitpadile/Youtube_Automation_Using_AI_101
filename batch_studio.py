@@ -35,9 +35,10 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
     for idx, item in enumerate(queue, 1):
         ca = item.get("concept_a")
         cb = item.get("concept_b")
+        target_dur = item.get("target_duration", 1.5)
 
         print("=" * 60)
-        print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}]")
+        print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}] (Target: {target_dur} mins)")
         print("=" * 60)
 
         existing_folder = find_existing_project_folder(ca, cb)
@@ -52,7 +53,8 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
                 concept_b=cb,
                 voice=voice,
                 speed=speed,
-                enable_images=False
+                enable_images=False,
+                target_duration=target_dur
             )
             completed_count += 1
             print(f"\n    ✅ Video {idx} complete! Saved in /output/{proj['folder_name']}")
