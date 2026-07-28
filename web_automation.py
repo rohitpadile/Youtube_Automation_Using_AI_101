@@ -184,21 +184,44 @@ def run_web_image_automation(max_limit=MAX_IMAGES_PER_RUN):
                     break
 
                 # -------------------------------------------------------------
-                # 4. DOWNLOAD / EXTRACT HIGH-RES IMAGE
+                # 4. DOWNLOAD / EXTRACT ORIGINAL FULL-RES MASTER IMAGE
                 # -------------------------------------------------------------
                 latest_img = page.locator("img[src*='blob:'], img[src*='googleusercontent']").last
                 if latest_img.is_visible():
-                    img_url = latest_img.get_attribute("src")
+                    img_url = latest_img.get_attribute("src") or ""
 
-                    if img_url and img_url.startswith("http"):
+                    # Full-Res URL Hack: Replace downscaled constraints (=s1024, =w1024) with =s0 (original uncompressed master size)
+                    if "googleusercontent.com" in img_url:
+                        img_url = re.sub(r'=s\d+', '=s0', img_url)
+                        img_url = re.sub(r'=w\d+', '=w3840', img_url)
+
+                    if img_url.startswith("http"):
                         img_response = page.request.get(img_url)
                         with open(img_path, "wb") as img_file:
                             img_file.write(img_response.body())
-                        print(f"  [✓] Successfully saved high-res: {img_path}")
+                        print(f"  [✓] Saved Original Master Full-Res Image: {img_path}")
                         generated_count += 1
+
+                    elif img_url.startswith("blob:"):
+                        # Extract raw uncompressed ArrayBuffer bytes from browser memory context
+                        base64_data = page.evaluate("""async (blobUrl) => {
+                            const response = await fetch(blobUrl);
+                            const blob = await response.blob();
+                            return new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                                reader.readAsDataURL(blob);
+                            });
+                        }""", img_url)
+                        import base64
+                        with open(img_path, "wb") as img_file:
+                            img_file.write(base64.b64decode(base64_data))
+                        print(f"  [✓] Extracted Uncompressed Full-Res Blob Image: {img_path}")
+                        generated_count += 1
+
                     else:
                         latest_img.screenshot(path=img_path)
-                        print(f"  [✓] Captured element frame: {img_path}")
+                        print(f"  [✓] Captured Element Frame: {img_path}")
                         generated_count += 1
                 else:
                     print("  [!] Warning: Image element not found in chat response.")
