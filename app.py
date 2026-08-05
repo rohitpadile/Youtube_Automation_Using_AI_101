@@ -121,7 +121,6 @@ def generate():
     voice = data.get("voice", "F4")
     speed = float(data.get("speed", 0.90))
     target_duration = float(data.get("target_duration", 1.5))
-    scene_mode = data.get("scene_mode", "hold_and_polish")
 
     try:
         project_data = run_pipeline(
@@ -130,8 +129,7 @@ def generate():
             custom_script=custom_script,
             voice=voice,
             speed=speed,
-            target_duration=target_duration,
-            scene_mode=scene_mode
+            target_duration=target_duration
         )
         if project_data:
             return jsonify({"status": "success", "project": project_data})
@@ -146,7 +144,6 @@ def trigger_batch():
     selected_ideas = data.get("selected_ideas", [])
     voice = data.get("voice", "F4")
     speed = float(data.get("speed", 0.90))
-    scene_mode = data.get("scene_mode", "hold_and_polish")
 
     # If no selected_ideas sent in request, try reading weekly_queue.json
     if not selected_ideas and os.path.exists(QUEUE_FILE):
@@ -160,10 +157,10 @@ def trigger_batch():
         return jsonify({"status": "error", "message": "No approved ideas in queue. Please select ideas first!"}), 400
 
     def start_batch_thread():
-        run_overnight_batch(selected_ideas=selected_ideas, voice=voice, speed=speed, scene_mode=scene_mode)
+        run_overnight_batch(selected_ideas=selected_ideas, voice=voice, speed=speed)
 
     threading.Thread(target=start_batch_thread).start()
-    return jsonify({"status": "success", "message": f"Overnight batch process started for {len(selected_ideas)} approved videos ({scene_mode} mode)."})
+    return jsonify({"status": "success", "message": f"Overnight batch process started for {len(selected_ideas)} approved videos."})
 
 @app.route("/api/web-generate-images", methods=["POST"])
 def trigger_web_images():

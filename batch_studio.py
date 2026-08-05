@@ -5,10 +5,10 @@ from generate_studio import run_pipeline, is_project_complete, find_existing_pro
 
 QUEUE_FILE = "weekly_queue.json"
 
-def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90, scene_mode="hold_and_polish"):
+def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
     print("=" * 65)
     print("  🌙 MR. NOBODY STUDIO - OVERNIGHT APPROVED BATCH GENERATOR")
-    print(f"  (Zero-Hurry Gentle Mode: 60s Rest Window Between Videos | Scene Mode: {scene_mode.upper()})")
+    print("  (Zero-Hurry Gentle Mode: 60s Rest Window Between Videos)")
     print("=" * 65)
 
     if selected_ideas and isinstance(selected_ideas, list) and len(selected_ideas) > 0:
@@ -36,10 +36,9 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90, scene_mode="
         ca = item.get("concept_a")
         cb = item.get("concept_b")
         target_dur = item.get("target_duration", 1.5)
-        item_scene_mode = item.get("scene_mode", scene_mode)
 
         print("=" * 60)
-        print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}] (Target: {target_dur} mins | Mode: {item_scene_mode.upper()})")
+        print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}] (Target: {target_dur} mins)")
         print("=" * 60)
 
         existing_folder = find_existing_project_folder(ca, cb)
@@ -55,8 +54,7 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90, scene_mode="
                 voice=voice,
                 speed=speed,
                 enable_images=False,
-                target_duration=target_dur,
-                scene_mode=item_scene_mode
+                target_duration=target_dur
             )
             completed_count += 1
             print(f"\n    ✅ Video {idx} complete! Saved in /output/{proj['folder_name']}")

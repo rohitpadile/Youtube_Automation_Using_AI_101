@@ -722,17 +722,6 @@
                             <input type="range" id="durationSlider" min="0.5" max="3.0" step="0.5" value="1.5" style="width: 100%; cursor: pointer;" oninput="updateDurationDisplay(this.value)">
                         </div>
 
-                        <div class="form-group" style="margin-top: 12px; background: rgba(139, 92, 246, 0.08); padding: 12px; border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
-                            <label style="margin-bottom: 6px; color: #a78bfa;">🎬 Storyboard & Editing Strategy</label>
-                            <select id="sceneModeSelect" style="background: rgba(15, 18, 25, 0.9);">
-                                <option value="hold_and_polish" selected>🎬 Hold & Polish (6-8 Master Images + Editing Tricks - Recommended)</option>
-                                <option value="per_line">⚡ Dense Per-Line (20-35 Micro Images)</option>
-                            </select>
-                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
-                                <strong>Hold & Polish:</strong> Groups 3-4 lines under 1 master image (~15-20s hold with Ken Burns zoom & rain/dust overlays). Saves hours of generation burnout!
-                            </div>
-                        </div>
-
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <div class="spinner" id="btnSpinner"></div>
                             <span id="btnText">🚀 Render Video & Copy-Paste Prompts Guide</span>
@@ -921,16 +910,7 @@
             }
             const slider = document.getElementById('durationSlider');
             const dur = slider ? parseFloat(slider.value) : 1.5;
-            const modeSelect = document.getElementById('sceneModeSelect');
-            const mode = modeSelect ? modeSelect.value : 'hold_and_polish';
-
-            weeklyApprovedQueue.push({ 
-                concept_a: ca, 
-                concept_b: cb, 
-                title_hook: title, 
-                target_duration: dur,
-                scene_mode: mode
-            });
+            weeklyApprovedQueue.push({ concept_a: ca, concept_b: cb, title_hook: title, target_duration: dur });
             renderQueue();
             saveQueue();
         }
@@ -960,16 +940,10 @@
                 const div = document.createElement('div');
                 div.className = 'queue-item';
                 const dur = item.target_duration || 1.5;
-                const mode = item.scene_mode || 'hold_and_polish';
-                const modeBadge = mode === 'hold_and_polish'
-                    ? `<span style="font-size: 11px; color: #a78bfa; margin-left: 6px; background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); padding: 2px 6px; border-radius: 4px;">🎬 Hold & Polish</span>`
-                    : `<span style="font-size: 11px; color: #60a5fa; margin-left: 6px; background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); padding: 2px 6px; border-radius: 4px;">⚡ Per-Line</span>`;
-
                 div.innerHTML = `
                     <div>
                         <strong>Video ${idx + 1}:</strong> ${item.concept_a} × ${item.concept_b}
                         <span style="font-size: 11px; color: #fbbf24; margin-left: 6px; background: rgba(251,191,36,0.1); padding: 2px 6px; border-radius: 4px;">⏱️ ${dur} min</span>
-                        ${modeBadge}
                     </div>
                     <button class="btn-remove-item" onclick="removeFromQueue(${idx})">✖</button>
                 `;
@@ -985,9 +959,8 @@
 
             const voice = document.getElementById('voiceSelect').value;
             const speed = parseFloat(document.getElementById('speedSelect').value);
-            const sceneMode = document.getElementById('sceneModeSelect').value;
             
-            if (confirm(`🌙 Start batch generation for ${weeklyApprovedQueue.length} APPROVED videos (${sceneMode.toUpperCase()} mode)?\n\nScripts, ready-to-copy Prompts Guides, and voiceovers will be rendered sequentially.`)) {
+            if (confirm(`🌙 Start batch generation for ${weeklyApprovedQueue.length} APPROVED videos?\n\nScripts, ready-to-copy Prompts Guides, and voiceovers will be rendered sequentially.`)) {
                 try {
                     const res = await fetch('/api/batch', {
                         method: 'POST',
@@ -995,8 +968,7 @@
                         body: JSON.stringify({ 
                             selected_ideas: weeklyApprovedQueue,
                             voice: voice, 
-                            speed: speed,
-                            scene_mode: sceneMode
+                            speed: speed 
                         })
                     });
                     const data = await res.json();
