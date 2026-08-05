@@ -36,9 +36,10 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90, scene_mode="
         ca = item.get("concept_a")
         cb = item.get("concept_b")
         target_dur = item.get("target_duration", 1.5)
+        item_scene_mode = item.get("scene_mode", scene_mode)
 
         print("=" * 60)
-        print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}] (Target: {target_dur} mins)")
+        print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}] (Target: {target_dur} mins | Mode: {item_scene_mode.upper()})")
         print("=" * 60)
 
         existing_folder = find_existing_project_folder(ca, cb)
@@ -55,7 +56,7 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90, scene_mode="
                 speed=speed,
                 enable_images=False,
                 target_duration=target_dur,
-                scene_mode=scene_mode
+                scene_mode=item_scene_mode
             )
             completed_count += 1
             print(f"\n    ✅ Video {idx} complete! Saved in /output/{proj['folder_name']}")
