@@ -5,10 +5,10 @@ from generate_studio import run_pipeline, is_project_complete, find_existing_pro
 
 QUEUE_FILE = "weekly_queue.json"
 
-def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
+def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90, scene_mode="hold_and_polish"):
     print("=" * 65)
     print("  🌙 MR. NOBODY STUDIO - OVERNIGHT APPROVED BATCH GENERATOR")
-    print("  (Zero-Hurry Gentle Mode: 60s Rest Window Between Videos)")
+    print(f"  (Zero-Hurry Gentle Mode: 60s Rest Window Between Videos | Scene Mode: {scene_mode.upper()})")
     print("=" * 65)
 
     if selected_ideas and isinstance(selected_ideas, list) and len(selected_ideas) > 0:
@@ -54,7 +54,8 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
                 voice=voice,
                 speed=speed,
                 enable_images=False,
-                target_duration=target_dur
+                target_duration=target_dur,
+                scene_mode=scene_mode
             )
             completed_count += 1
             print(f"\n    ✅ Video {idx} complete! Saved in /output/{proj['folder_name']}")

@@ -124,7 +124,7 @@ Each pair MUST collide a mundane everyday object/routine (Concept A) with a subt
 Output ONLY a valid JSON array of 20 objects with keys:
 - "concept_a": Short string (the everyday object/habit)
 - "concept_b": Short string (the psychological concept)
-- "title_hook": Catchy, quiet video title line
+- "title_hook": High-CTR, highly relatable, search-friendly video title (e.g. "Why We [Specific Behavior]", "The Psychology of [Relatable Habit]", "Why You [Everyday Action]"). Must spark immediate curiosity for cold viewers scrolling on mobile while remaining quiet and non-clickbait.
 - "teaser": 1-sentence teaser describing the hidden collision connection.
 
 Do NOT repeat topics that have already been generated or uploaded. Make them deeply relatable and observant. Output ONLY valid JSON.
@@ -359,31 +359,38 @@ def build_full_prompt(visual_desc, ref_label="female", master_style=""):
     clean_style = master_style.strip()
     return f"{visual_desc}\n\n{cinematic_handoff}\n\n{clean_style}"
 
-def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=None):
+def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=None, scene_mode="hold_and_polish"):
+    min_required = 5 if scene_mode == "hold_and_polish" else MIN_REQUIRED_SCENES
+
     if existing_meta_file and os.path.exists(existing_meta_file):
         try:
             with open(existing_meta_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 scenes = data.get("scenes", [])
-                if len(scenes) >= MIN_REQUIRED_SCENES:
-                    print(f"    [+] Resuming: Verified {len(scenes)} dense micro-scenes from existing metadata.json (Skipping API parsing).")
+                if len(scenes) >= min_required:
+                    print(f"    [+] Resuming: Verified {len(scenes)} scenes ({scene_mode} mode) from existing metadata.json (Skipping API parsing).")
                     return scenes
                 else:
-                    print(f"    [*] Outdated scene count found ({len(scenes)} scenes < {MIN_REQUIRED_SCENES} required). Re-parsing into dense micro-scenes...")
+                    print(f"    [*] Outdated scene count found ({len(scenes)} scenes < {min_required} required). Re-parsing scenes...")
         except Exception:
             pass
 
-    print("\n--- Step 1/3: Parsing script into micro-scenes with Gemini API ---")
+    print(f"\n--- Step 1/3: Parsing script into micro-scenes with Gemini API (Mode: {scene_mode.upper()}) ---")
     ref_file, master_style = get_character_reference(voice)
     is_female = "female" in ref_file.lower()
     ref_label = "female" if is_female else "male"
     pronoun_subj = "she" if is_female else "he"
     pronoun_pos = "her" if is_female else "his"
-    
+
+    scene_count_rule = (
+        "Analyze the provided script and break it down into 6 to 8 CINEMATIC MASTER SCENES total (The 'Hold & Polish' editing strategy).\n    Group 3 to 4 sentences under a single powerful visual master prompt (each master scene holds for 15 to 20 seconds of audio).\n    Also include an 'editing_trick' key with actionable editing advice (e.g., 'Slow 15-second Ken Burns zoom-in with rain overlay')."
+        if scene_mode == "hold_and_polish"
+        else "Analyze the provided script and break it down into dense, sentence-by-sentence micro-scenes (typically 10 to 35 scenes depending on script length).\n    CRITICAL: CHANGE THE SCENE VISUAL PROMPT FOR EVERY NEW SENTENCE, BREATH LINE, OR DISTINCT IDEA."
+    )
+
     system_instruction = f"""
     You are an expert storyboard director for {CHANNEL_CFG.get('CHANNEL_NAME', 'Observer Studio')}.
-    Analyze the provided script and break it down into dense, sentence-by-sentence micro-scenes (typically 10 to 35 scenes depending on script length).
-    CRITICAL: CHANGE THE SCENE VISUAL PROMPT FOR EVERY NEW SENTENCE, BREATH LINE, OR DISTINCT IDEA.
+    {scene_count_rule}
     
     BRANDING & CINEMATOGRAPHY RULES FOR "MR. NOBODY" (MANDATORY):
     1. RECURRING OBSERVER PERSPECTIVE (NO CHARACTER CONTRADICTIONS):
@@ -424,8 +431,9 @@ def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=N
 
     Output ONLY a valid JSON array of objects. Each object MUST contain:
     - "scene_num": Integer (starting at 1)
-    - "narration": Exact short narration text for this specific micro-scene (1 to 2 lines max).
+    - "narration": Short narration text block for this scene.
     - "visual_prompt": A visual prompt adhering strictly to the framework above (Parts 1 to 6).
+    {"- 'editing_trick': Specific editing recommendation (e.g. 'Drop image into CapCut, apply 15s Ken Burns zoom-in, add rain overlay.')" if scene_mode == "hold_and_polish" else ""}
     
     Do NOT include code block markdown or explanations outside the JSON array.
     """
@@ -440,10 +448,10 @@ def parse_script_to_scenes(client, script_text, voice="F4", existing_meta_file=N
     scenes = json.loads(response.text)
     
     for s in scenes:
-        visual_desc = s['visual_prompt'].strip()
+        visual_desc = s.get('visual_prompt', s.get('visual_description', '')).strip()
         s["full_prompt"] = build_full_prompt(visual_desc, ref_label=ref_label, master_style=master_style)
         
-    print(f"    [+] Created {len(scenes)} visual micro-scenes.")
+    print(f"    [+] Created {len(scenes)} visual scenes ({scene_mode} mode).")
     return scenes
 
 def generate_prompts_guide_file(output_dir, scenes, voice="F4"):
@@ -456,8 +464,12 @@ def generate_prompts_guide_file(output_dir, scenes, voice="F4"):
         num_val = s['scene_num']
         visual_desc = s.get('visual_prompt', '').strip()
         formatted_prompt = build_full_prompt(visual_desc, ref_label=ref_label, master_style=master_style)
+        editing_trick = s.get("editing_trick", "").strip()
         
-        block = f"IMAGE {num_val}\n🎙️ Script\n\n{s['narration'].strip()}\n\nPrompt\n\n{formatted_prompt}"
+        header = f"IMAGE {num_val} (Hold for ~15-20s)" if editing_trick else f"IMAGE {num_val}"
+        trick_block = f"\n\n🎬 Recommended Editing Effect\n{editing_trick}" if editing_trick else ""
+        
+        block = f"{header}\n🎙️ Script\n\n{s['narration'].strip()}{trick_block}\n\nPrompt\n\n{formatted_prompt}"
         blocks.append(block)
 
     full_guide = ("\n" + "=" * 60 + "\n\n").join(blocks)
@@ -602,7 +614,7 @@ def is_project_complete(folder_path):
 
     return True
 
-def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4", speed=0.90, enable_images=False, target_duration=1.5):
+def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4", speed=0.90, enable_images=False, target_duration=1.5, scene_mode="hold_and_polish"):
     client = get_genai_client()
 
     existing_folder = find_existing_project_folder(concept_a, concept_b)
@@ -644,7 +656,7 @@ def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4",
     ref_img, _ = get_character_reference(voice)
 
     # 2. Scene Parsing
-    scenes = parse_script_to_scenes(client, script_text, voice=voice, existing_meta_file=meta_path)
+    scenes = parse_script_to_scenes(client, script_text, voice=voice, existing_meta_file=meta_path, scene_mode=scene_mode)
 
     # Save metadata & Prompts Guide
     project_data = {
@@ -654,6 +666,7 @@ def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4",
         "concept_a": concept_a or "",
         "concept_b": concept_b or "",
         "target_duration": float(target_duration) if target_duration else 1.5,
+        "scene_mode": scene_mode,
         "script": script_text,
         "scenes": scenes,
         "voice": voice,
@@ -684,6 +697,7 @@ def main():
     parser.add_argument("--voice", "-v", type=str, default="F4", help="Voice model")
     parser.add_argument("--speed", "-s", type=float, default=0.90, help="Voice speed")
     parser.add_argument("--duration", "-d", type=float, default=1.5, help="Target script duration in minutes (e.g. 1.0, 1.5, 2.0)")
+    parser.add_argument("--scene-mode", "-m", type=str, choices=["hold_and_polish", "per_line"], default="hold_and_polish", help="Scene generation strategy: 'hold_and_polish' (6-8 master images + editing tricks) or 'per_line' (20-35 micro scenes)")
     parser.add_argument("--ideas", action="store_true", help="Suggest 20 fresh ideas")
     parser.add_argument("--enable-images", action="store_true", help="Enable API image generation (Default: OFF)")
     args = parser.parse_args()
@@ -707,7 +721,8 @@ def main():
         voice=args.voice, 
         speed=args.speed,
         enable_images=args.enable_images,
-        target_duration=args.duration
+        target_duration=args.duration,
+        scene_mode=args.scene_mode
     )
 
 if __name__ == "__main__":

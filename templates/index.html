@@ -722,6 +722,17 @@
                             <input type="range" id="durationSlider" min="0.5" max="3.0" step="0.5" value="1.5" style="width: 100%; cursor: pointer;" oninput="updateDurationDisplay(this.value)">
                         </div>
 
+                        <div class="form-group" style="margin-top: 12px; background: rgba(139, 92, 246, 0.08); padding: 12px; border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.3);">
+                            <label style="margin-bottom: 6px; color: #a78bfa;">🎬 Storyboard & Editing Strategy</label>
+                            <select id="sceneModeSelect" style="background: rgba(15, 18, 25, 0.9);">
+                                <option value="hold_and_polish" selected>🎬 Hold & Polish (6-8 Master Images + Editing Tricks - Recommended)</option>
+                                <option value="per_line">⚡ Dense Per-Line (20-35 Micro Images)</option>
+                            </select>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;">
+                                <strong>Hold & Polish:</strong> Groups 3-4 lines under 1 master image (~15-20s hold with Ken Burns zoom & rain/dust overlays). Saves hours of generation burnout!
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn-submit" id="submitBtn">
                             <div class="spinner" id="btnSpinner"></div>
                             <span id="btnText">🚀 Render Video & Copy-Paste Prompts Guide</span>
@@ -959,8 +970,9 @@
 
             const voice = document.getElementById('voiceSelect').value;
             const speed = parseFloat(document.getElementById('speedSelect').value);
+            const sceneMode = document.getElementById('sceneModeSelect').value;
             
-            if (confirm(`🌙 Start batch generation for ${weeklyApprovedQueue.length} APPROVED videos?\n\nScripts, ready-to-copy Prompts Guides, and voiceovers will be rendered sequentially.`)) {
+            if (confirm(`🌙 Start batch generation for ${weeklyApprovedQueue.length} APPROVED videos (${sceneMode.toUpperCase()} mode)?\n\nScripts, ready-to-copy Prompts Guides, and voiceovers will be rendered sequentially.`)) {
                 try {
                     const res = await fetch('/api/batch', {
                         method: 'POST',
@@ -968,7 +980,8 @@
                         body: JSON.stringify({ 
                             selected_ideas: weeklyApprovedQueue,
                             voice: voice, 
-                            speed: speed 
+                            speed: speed,
+                            scene_mode: sceneMode
                         })
                     });
                     const data = await res.json();
