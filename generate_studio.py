@@ -602,7 +602,7 @@ def is_project_complete(folder_path):
 
     return True
 
-def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4", speed=0.90, enable_images=False, target_duration=1.5):
+def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4", speed=0.90, enable_images=False, target_duration=1.5, title_hook="", description=""):
     client = get_genai_client()
 
     existing_folder = find_existing_project_folder(concept_a, concept_b)
@@ -651,6 +651,8 @@ def run_pipeline(concept_a=None, concept_b=None, custom_script=None, voice="F4",
         "project_id": folder_name,
         "folder_name": folder_name,
         "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+        "title": title_hook or "",
+        "description": description or "",
         "concept_a": concept_a or "",
         "concept_b": concept_b or "",
         "target_duration": float(target_duration) if target_duration else 1.5,

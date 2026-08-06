@@ -36,6 +36,8 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
         ca = item.get("concept_a")
         cb = item.get("concept_b")
         target_dur = item.get("target_duration", 1.5)
+        title_hook = item.get("title_hook", "")
+        teaser = item.get("teaser", "")
 
         print("=" * 60)
         print(f" 🎬 VIDEO {idx}/{len(queue)}: [{ca} × {cb}] (Target: {target_dur} mins)")
@@ -54,7 +56,9 @@ def run_approved_batch(selected_ideas=None, voice="F4", speed=0.90):
                 voice=voice,
                 speed=speed,
                 enable_images=False,
-                target_duration=target_dur
+                target_duration=target_dur,
+                title_hook=title_hook,
+                description=teaser
             )
             completed_count += 1
             print(f"\n    ✅ Video {idx} complete! Saved in /output/{proj['folder_name']}")

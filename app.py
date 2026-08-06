@@ -121,6 +121,8 @@ def generate():
     voice = data.get("voice", "F4")
     speed = float(data.get("speed", 0.90))
     target_duration = float(data.get("target_duration", 1.5))
+    title_hook = data.get("title_hook", "")
+    teaser = data.get("teaser", "")
 
     try:
         project_data = run_pipeline(
@@ -129,7 +131,9 @@ def generate():
             custom_script=custom_script,
             voice=voice,
             speed=speed,
-            target_duration=target_duration
+            target_duration=target_duration,
+            title_hook=title_hook,
+            description=teaser
         )
         if project_data:
             return jsonify({"status": "success", "project": project_data})
